@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBS & Timeline — FPT AgroForest UAV</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f7f5;
+  --white: #ffffff;
+  --border: #e2e0d8;
+  --text: #1a1a16;
+  --muted: #6a6860;
+  --faint: #b8b4a8;
+  --c1: #1a6aaa; /* Tìm hiểu dữ liệu - blue */
+  --c2: #1e8040; /* Nghiên cứu phát triển - green */
+  --c3: #c05010; /* Kế hoạch kinh doanh - orange */
+  --c4: #7040c0; /* Tổng hợp & trình bày - purple */
+  --sans: 'Be Vietnam Pro', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.6; }
+
+/* ── NAV TABS ── */
+.tabs {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 28px; height: 50px;
+  position: sticky; top: 0; z-index: 100;
+  gap: 0;
+}
+.tabs .logo { font-family: var(--mono); font-size: 11px; color: var(--c3); font-weight: 500; margin-right: 28px; white-space: nowrap; letter-spacing: 0.06em; }
+.tab-btn {
+  background: none; border: none; cursor: pointer; font-family: var(--sans);
+  font-size: 12px; font-weight: 500; color: var(--muted);
+  padding: 0 16px; height: 100%; border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active { color: var(--c3); border-bottom-color: var(--c3); }
+
+.page { max-width: 1080px; margin: 0 auto; padding: 28px 24px 72px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── SECTION LABEL ── */
+.slabel {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--faint);
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px; margin-top: 28px;
+}
+.slabel:first-child { margin-top: 0; }
+.slabel::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── SUMMARY CARDS ── */
+.kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 24px; }
+@media(max-width:640px){ .kpi-row { grid-template-columns: 1fr 1fr; } }
+.kpi {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px; border-left: 3px solid;
+}
+.kpi .kv { font-family: var(--mono); font-size: 24px; font-weight: 500; line-height: 1; margin-bottom: 4px; }
+.kpi .kl { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* ── WBS TREE ── */
+.wbs { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.wbs-group { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.wbs-header {
+  display: grid; grid-template-columns: 36px 1fr auto;
+  align-items: center; gap: 12px; padding: 14px 18px;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+  user-select: none; transition: background 0.1s;
+}
+.wbs-header:hover { background: var(--bg); }
+.wbs-num { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+.wbs-title { font-size: 14px; font-weight: 600; }
+.wbs-meta { display: flex; align-items: center; gap: 10px; }
+.wbs-week { font-family: var(--mono); font-size: 10px; padding: 3px 8px; border-radius: 4px; border: 1px solid; white-space: nowrap; }
+.wbs-toggle { font-size: 14px; color: var(--faint); transition: transform 0.2s; }
+.wbs-header.open .wbs-toggle { transform: rotate(90deg); }
+
+.wbs-tasks { display: none; }
+.wbs-tasks.open { display: block; }
+.wbs-task {
+  display: grid; grid-template-columns: 24px 1fr auto auto;
+  gap: 10px; align-items: start; padding: 10px 18px 10px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.wbs-task:last-child { border-bottom: none; }
+.task-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.task-body h4 { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.task-body p { font-size: 11px; color: var(--muted); line-height: 1.55; }
+.task-output {
+  font-size: 10px; padding: 2px 8px; border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--muted); white-space: nowrap; font-family: var(--mono);
+  align-self: start; margin-top: 2px;
+}
+.task-assign {
+  font-size: 10px; white-space: nowrap; align-self: start; margin-top: 2px;
+  font-family: var(--mono);
+}
+
+/* ── GANTT ── */
+.gantt-wrap { overflow-x: auto; margin-bottom: 28px; }
+.gantt { min-width: 700px; }
+.gantt-head { display: grid; gap: 0; }
+.gantt-head-row {
+  display: grid; grid-template-columns: 200px repeat(6,1fr);
+  border-bottom: 2px solid var(--border);
+}
+.gh-cell {
+  padding: 8px 10px; font-family: var(--mono); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  text-align: center;
+}
+.gh-cell:first-child { text-align: left; }
+.gh-week {
+  font-size: 9px; color: var(--faint); text-align: center; margin-top: 2px;
+  font-family: var(--mono);
+}
+
+.gantt-row {
+  display: grid; grid-template-columns: 200px repeat(6,1fr);
+  border-bottom: 1px solid var(--border); min-height: 36px;
+  transition: background 0.1s;
+}
+.gantt-row:hover { background: var(--bg); }
+.gantt-row.group-row { background: var(--bg); border-bottom: 2px solid var(--border); }
+.gantt-label {
+  padding: 8px 12px; font-size: 11px; display: flex; align-items: center; gap: 6px;
+  border-right: 1px solid var(--border);
+}
+.gantt-label.group { font-weight: 700; font-size: 12px; }
+.gantt-label .color-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.gantt-cell { position: relative; padding: 4px 2px; display: flex; align-items: center; }
+.gantt-bar {
+  height: 20px; border-radius: 4px; width: 100%;
+  display: flex; align-items: center; padding: 0 6px;
+  font-family: var(--mono); font-size: 9px; color: white; white-space: nowrap;
+  overflow: hidden;
+}
+.gantt-bar.partial-start { border-radius: 0 4px 4px 0; }
+.gantt-bar.partial-end { border-radius: 4px 0 0 4px; }
+.gantt-bar.full { border-radius: 4px; }
+.gantt-milestone {
+  width: 16px; height: 16px; transform: rotate(45deg);
+  border: 2px solid; margin: auto;
+}
+
+/* ── MEMBER TABLE ── */
+.member-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 12px; }
+.member-table th {
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted); text-align: left;
+  padding: 8px 12px; border-bottom: 2px solid var(--border);
+}
+.member-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.5; }
+.member-table tr:last-child td { border-bottom: none; }
+.member-table tr:hover td { background: var(--bg); }
+.member-table td:first-child { font-weight: 600; white-space: nowrap; }
+.role-badge {
+  font-family: var(--mono); font-size: 9px; padding: 2px 7px;
+  border-radius: 4px; border: 1px solid; font-weight: 500; white-space: nowrap;
+}
+.deliverable-list { list-style: none; }
+.deliverable-list li { padding: 2px 0 2px 12px; position: relative; color: var(--muted); }
+.deliverable-list li::before { content:'→'; position:absolute; left:0; font-family:var(--mono); font-size:10px; }
+
+/* ── DELIVERABLE CHECKLIST ── */
+.checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+@media(max-width:640px){ .checklist { grid-template-columns: 1fr; } }
+.check-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+}
+.check-card .cc-head { font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.check-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 11px; }
+.check-item:last-child { border-bottom: none; }
+.check-item .ci-week { font-family: var(--mono); font-size: 9px; color: var(--faint); margin-left: auto; white-space: nowrap; padding-left: 8px; }
+.check-box { width: 14px; height: 14px; border: 1px solid var(--faint); border-radius: 3px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── FOOTER ── */
+.foot { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 10px; color: var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="logo">UAV · Lâm nghiệp</div>
+  <button class="tab-btn active" onclick="showTab('wbs',this)">WBS Công việc</button>
+  <button class="tab-btn" onclick="showTab('gantt',this)">Timeline Gantt</button>
+  <button class="tab-btn" onclick="showTab('members',this)">Phân công nhóm</button>
+  <button class="tab-btn" onclick="showTab('deliverables',this)">Đầu ra & Checklist</button>
+  <button class="tab-btn" onclick="showTab('outputs3',this)">🎯 3 Đầu ra bắt buộc</button>
+</div>
+
+<div class="page">
+
+<!-- ══════════════════════════════════
+     WBS
+══════════════════════════════════ -->
+<div id="wbs" class="section active">
+
+  <div class="kpi-row">
+    <div class="kpi" style="border-color:var(--c1)">
+      <div class="kv" style="color:var(--c1)">3</div>
+      <div class="kl">đầu mục công việc chính</div>
+    </div>
+    <div class="kpi" style="border-color:var(--c2)">
+      <div class="kv" style="color:var(--c2)">18</div>
+      <div class="kl">task cụ thể cần hoàn thành</div>
+    </div>
+    <div class="kpi" style="border-color:var(--c3)">
+      <div class="kv" style="color:var(--c3)">8</div>
+      <div class="kl">thành viên trong nhóm</div>
+    </div>
+    <div class="kpi" style="border-color:var(--c4)">
+      <div class="kv" style="color:var(--c4)">6</div>
+      <div class="kl">tuần đến deadline nộp</div>
+    </div>
+  </div>
+
+  <div class="slabel">Cây công việc (WBS) — nhấn để mở rộng</div>
+  <div class="wbs">
+
+    <!-- GROUP 1 -->
+    <div class="wbs-group">
+      <div class="wbs-header" onclick="toggleWBS(this)" style="border-left: 4px solid var(--c1)">
+        <div class="wbs-num" style="color:var(--c1)">01</div>
+        <div>
+          <div class="wbs-title">Tìm hiểu dữ liệu & phân tích bối cảnh</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Thu thập, xử lý và phân tích dữ liệu nền tảng cho đề tài</div>
+        </div>
+        <div class="wbs-meta">
+          <span class="wbs-week" style="color:var(--c1);border-color:rgba(26,106,170,0.3);background:rgba(26,106,170,0.07)">Tuần 1–2</span>
+          <span class="wbs-toggle">▶</span>
+        </div>
+      </div>
+      <div class="wbs-tasks">
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c1)"></div>
+          <div class="task-body">
+            <h4>1.1 Thu thập dữ liệu cháy rừng VN (2010–2024)</h4>
+            <p>Tổng hợp từ Cục Kiểm lâm, báo cáo Bộ NN&PTNT, nghiên cứu khoa học. Phân loại theo năm, tháng, vùng địa lý, nguyên nhân, diện tích thiệt hại.</p>
+          </div>
+          <div class="task-output">Data Excel</div>
+          <div class="task-assign" style="color:var(--c1)">TV1 + TV2</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c1)"></div>
+          <div class="task-body">
+            <h4>1.2 Phân tích thị trường UAV lâm nghiệp</h4>
+            <p>Quy mô thị trường toàn cầu và VN, tốc độ tăng trưởng, đối thủ cạnh tranh trong nước và quốc tế, giá dịch vụ tham chiếu.</p>
+          </div>
+          <div class="task-output">Báo cáo thị trường</div>
+          <div class="task-assign" style="color:var(--c1)">TV3</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c1)"></div>
+          <div class="task-body">
+            <h4>1.3 Nghiên cứu khung pháp lý UAV tại VN</h4>
+            <p>Tổng hợp NĐ36, NĐ04/2022, TT01/2022, Luật Lâm nghiệp 2017, Luật Đo đạc Bản đồ 2018. Xác định rào cản và cơ hội pháp lý.</p>
+          </div>
+          <div class="task-output">Bảng pháp lý</div>
+          <div class="task-assign" style="color:var(--c1)">TV4</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c1)"></div>
+          <div class="task-body">
+            <h4>1.4 Phân tích nguồn quỹ & tài chính lâm nghiệp</h4>
+            <p>PFES (3.000–4.000 tỷ/năm), REDD+, GCF, VEPF. Xác định nguồn tài chính khách hàng có thể dùng để trả phí dịch vụ FPT.</p>
+          </div>
+          <div class="task-output">Bảng nguồn quỹ</div>
+          <div class="task-assign" style="color:var(--c1)">TV5</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c1)"></div>
+          <div class="task-body">
+            <h4>1.5 Phỏng vấn / khảo sát khách hàng tiềm năng</h4>
+            <p>Tiếp cận 3–5 đơn vị: BQL rừng, doanh nghiệp lâm nghiệp, Cục Kiểm lâm. Thu thập pain point thực tế và willingness-to-pay.</p>
+          </div>
+          <div class="task-output">Kết quả khảo sát</div>
+          <div class="task-assign" style="color:var(--c1)">TV1+TV6</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP 2 -->
+    <div class="wbs-group">
+      <div class="wbs-header" onclick="toggleWBS(this)" style="border-left: 4px solid var(--c2)">
+        <div class="wbs-num" style="color:var(--c2)">02</div>
+        <div>
+          <div class="wbs-title">Nghiên cứu phát triển giải pháp</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Thiết kế kỹ thuật, quy trình vận hành và đánh giá tính khả thi</div>
+        </div>
+        <div class="wbs-meta">
+          <span class="wbs-week" style="color:var(--c2);border-color:rgba(30,128,64,0.3);background:rgba(30,128,64,0.07)">Tuần 2–4</span>
+          <span class="wbs-toggle">▶</span>
+        </div>
+      </div>
+      <div class="wbs-tasks">
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c2)"></div>
+          <div class="task-body">
+            <h4>2.1 Thiết kế quy trình cảnh báo cháy rừng bằng UAV</h4>
+            <p>6 bước chi tiết: bay tuần tra → cảm biến → truyền dữ liệu → AI phân tích (3 lớp lọc) → cảnh báo 4 mức → điều phối ứng cứu. Tính toán thời gian phản ứng mục tiêu.</p>
+          </div>
+          <div class="task-output">Sơ đồ quy trình</div>
+          <div class="task-assign" style="color:var(--c2)">TV2 + TV3</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c2)"></div>
+          <div class="task-body">
+            <h4>2.2 Thiết kế quy trình lập bản đồ sinh thái 3D</h4>
+            <p>7 bước: khảo sát → GCP → bay LiDAR+RGB → xử lý point cloud → phân loại loài → validation → xuất sản phẩm. Xác định stack công nghệ và chi phí.</p>
+          </div>
+          <div class="task-output">Sơ đồ quy trình</div>
+          <div class="task-assign" style="color:var(--c2)">TV4 + TV5</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c2)"></div>
+          <div class="task-body">
+            <h4>2.3 Phân tích hạn chế kỹ thuật & giải pháp</h4>
+            <p>5 mảng dịch vụ × hạn chế kỹ thuật, pháp lý, vận hành, tài chính. Ma trận rủi ro và hướng xử lý. Benchmark với case study quốc tế (Israel, Úc, Brazil).</p>
+          </div>
+          <div class="task-output">Ma trận rủi ro</div>
+          <div class="task-assign" style="color:var(--c2)">TV6 + TV7</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c2)"></div>
+          <div class="task-body">
+            <h4>2.4 Thiết kế kiến trúc nền tảng FPT AgroForest UAV</h4>
+            <p>Mô hình DaaS 3 lớp (vệ tinh + fixed-wing + multirotor). Vai trò từng đơn vị FPT: AI, Telecom, Smart Cloud, IS. Sơ đồ hệ thống tổng thể.</p>
+          </div>
+          <div class="task-output">System diagram</div>
+          <div class="task-assign" style="color:var(--c2)">TV1 + TV8</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c2)"></div>
+          <div class="task-body">
+            <h4>2.5 Phân tích đo lường carbon & tín chỉ carbon</h4>
+            <p>3 chỉ số AGB/BGB/ΔC, quy trình 5 bước để được công nhận quốc tế (REDD+/VCS), hạn chế UAV và mô hình hybrid với ground-truth sampling.</p>
+          </div>
+          <div class="task-output">Báo cáo carbon</div>
+          <div class="task-assign" style="color:var(--c2)">TV3 + TV5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GROUP 3 -->
+    <div class="wbs-group">
+      <div class="wbs-header" onclick="toggleWBS(this)" style="border-left: 4px solid var(--c3)">
+        <div class="wbs-num" style="color:var(--c3)">03</div>
+        <div>
+          <div class="wbs-title">Xây dựng kế hoạch kinh doanh mới</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Business Model Canvas, tài chính, chiến lược go-to-market và trình bày</div>
+        </div>
+        <div class="wbs-meta">
+          <span class="wbs-week" style="color:var(--c3);border-color:rgba(192,80,16,0.3);background:rgba(192,80,16,0.07)">Tuần 3–6</span>
+          <span class="wbs-toggle">▶</span>
+        </div>
+      </div>
+      <div class="wbs-tasks">
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.1 Xây dựng Business Model Canvas</h4>
+            <p>9 ô BMC đầy đủ: Value Proposition (DaaS), Customer Segments (BQL rừng, DN lâm nghiệp, tổ chức quốc tế), Revenue Streams (subscription + pay-per-use + data), Key Resources (FPT AI + Telecom + Cloud), Cost Structure.</p>
+          </div>
+          <div class="task-output">BMC canvas</div>
+          <div class="task-assign" style="color:var(--c3)">TV1 + TV7</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.2 Phân tích SWOT & chiến lược cạnh tranh</h4>
+            <p>SWOT đầy đủ 4 góc phần tư. Xác định lợi thế cạnh tranh bền vững của FPT (hệ sinh thái AI + Telecom + Cloud). Chiến lược SO/ST/WO/WT.</p>
+          </div>
+          <div class="task-output">Ma trận SWOT</div>
+          <div class="task-assign" style="color:var(--c3)">TV2 + TV6</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.3 Lập kế hoạch tài chính 3 năm</h4>
+            <p>Chi phí đầu tư ban đầu (drone, sensor, platform), chi phí vận hành hàng năm, dự báo doanh thu theo 3 kịch bản (thấp/trung bình/cao), điểm break-even, NPV, IRR.</p>
+          </div>
+          <div class="task-output">Financial model</div>
+          <div class="task-assign" style="color:var(--c3)">TV4 + TV8</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.4 Thiết kế Go-to-Market & lộ trình triển khai</h4>
+            <p>Pilot 6 tháng đầu (vùng/tỉnh nào, quy mô bao nhiêu ha). Scale năm 2–3. Chiến lược bán hàng B2G và B2B. Partnership key: Cục Kiểm lâm, Vinafor, auditor carbon.</p>
+          </div>
+          <div class="task-output">GTM roadmap</div>
+          <div class="task-assign" style="color:var(--c3)">TV5 + TV7</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.5 Thiết kế KPI & hệ thống đánh giá</h4>
+            <p>KPI cho từng mảng dịch vụ: diện tích giám sát (ha), số vụ cháy phát hiện sớm, thời gian phản ứng, tỷ lệ false positive AI, NPS khách hàng, doanh thu/chi phí.</p>
+          </div>
+          <div class="task-output">KPI dashboard</div>
+          <div class="task-assign" style="color:var(--c3)">TV3 + TV8</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.6 Viết báo cáo & làm slide thuyết trình</h4>
+            <p>Báo cáo đề tài đầy đủ theo format MiniMBA FPT. Slide deck 15–20 trang cho buổi bảo vệ. Review nội bộ ít nhất 1 lần trước khi nộp.</p>
+          </div>
+          <div class="task-output">Báo cáo + Slide</div>
+          <div class="task-assign" style="color:var(--c3)">Cả nhóm</div>
+        </div>
+        <div class="wbs-task">
+          <div class="task-dot" style="background:var(--c3)"></div>
+          <div class="task-body">
+            <h4>3.7 Review nội bộ & hoàn thiện</h4>
+            <p>Nhóm trưởng review tổng thể. Chỉnh sửa theo góp ý. Kiểm tra tính nhất quán số liệu giữa các phần. In/nộp đúng hạn.</p>
+          </div>
+          <div class="task-output">Final submission</div>
+          <div class="task-assign" style="color:var(--c3)">TV1 (lead)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="foot">
+    <span>FPT MiniMBA 2026 · AgroForest UAV</span>
+    <span>WBS — 3 đầu mục · 17 task · 8 thành viên · 6 tuần</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     GANTT
+══════════════════════════════════ -->
+<div id="gantt" class="section">
+  <div class="slabel">Biểu đồ Gantt — 6 tuần</div>
+  <div class="gantt-wrap">
+    <div class="gantt">
+      <div class="gantt-head-row" style="background:var(--bg)">
+        <div class="gh-cell">Công việc</div>
+        <div class="gh-cell">Tuần 1<div class="gh-week">Phân tích</div></div>
+        <div class="gh-cell">Tuần 2<div class="gh-week">Nghiên cứu</div></div>
+        <div class="gh-cell">Tuần 3<div class="gh-week">Thiết kế</div></div>
+        <div class="gh-cell">Tuần 4<div class="gh-week">Xây dựng</div></div>
+        <div class="gh-cell">Tuần 5<div class="gh-week">Hoàn thiện</div></div>
+        <div class="gh-cell">Tuần 6<div class="gh-week">Nộp bài</div></div>
+      </div>
+
+      <!-- GROUP 1 -->
+      <div class="gantt-row group-row">
+        <div class="gantt-label group"><div class="color-dot" style="background:var(--c1)"></div>1. Tìm hiểu dữ liệu</div>
+        <div class="gantt-cell" style="grid-column: 2/4"><div class="gantt-bar" style="background:var(--c1)">Tuần 1–2</div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">1.1 Thu thập dữ liệu cháy rừng</div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">1.2 Phân tích thị trường UAV</div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.4)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">1.3 Khung pháp lý UAV</div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">1.4 Nguồn quỹ lâm nghiệp</div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">1.5 Khảo sát khách hàng</div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(26,106,170,0.4)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+
+      <!-- GROUP 2 -->
+      <div class="gantt-row group-row">
+        <div class="gantt-label group"><div class="color-dot" style="background:var(--c2)"></div>2. Nghiên cứu phát triển</div>
+        <div class="gantt-cell"></div>
+        <div class="gantt-cell" style="grid-column: 3/6"><div class="gantt-bar" style="background:var(--c2)">Tuần 2–4</div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">2.1 Quy trình cảnh báo cháy</div>
+        <div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">2.2 Quy trình bản đồ sinh thái</div>
+        <div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.4)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">2.3 Hạn chế & ma trận rủi ro</div>
+        <div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">2.4 Kiến trúc nền tảng FPT</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.4)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">2.5 Phân tích carbon</div>
+        <div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(30,128,64,0.4)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+
+      <!-- GROUP 3 -->
+      <div class="gantt-row group-row">
+        <div class="gantt-label group"><div class="color-dot" style="background:var(--c3)"></div>3. Kế hoạch kinh doanh</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell" style="grid-column: 4/8"><div class="gantt-bar" style="background:var(--c3)">Tuần 3–6</div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.1 Business Model Canvas</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.2 SWOT & chiến lược</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.3 Kế hoạch tài chính 3 năm</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.4)"></div></div>
+        <div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.4 Go-to-Market roadmap</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.5 KPI & đánh giá</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.6 Viết báo cáo + slide</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.7)"></div></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:rgba(192,80,16,0.4)"></div></div>
+      </div>
+      <div class="gantt-row">
+        <div class="gantt-label" style="padding-left:24px">3.7 Review nội bộ & nộp bài</div>
+        <div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div><div class="gantt-cell"></div>
+        <div class="gantt-cell"><div class="gantt-bar full" style="background:var(--c3)">DEADLINE</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:28px;padding:12px 16px;background:var(--white);border:1px solid var(--border);border-radius:8px;">
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:10px;background:var(--c1);border-radius:3px;display:inline-block"></span>Tìm hiểu dữ liệu</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:10px;background:var(--c2);border-radius:3px;display:inline-block"></span>Nghiên cứu phát triển</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:10px;background:var(--c3);border-radius:3px;display:inline-block"></span>Kế hoạch kinh doanh</span>
+    <span style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:10px;background:rgba(26,106,170,0.35);border-radius:3px;display:inline-block"></span>Màu nhạt = tiếp tục/review</span>
+  </div>
+  <div class="foot"><span>FPT MiniMBA 2026</span><span>Gantt 6 tuần · 17 task</span></div>
+</div>
+
+<!-- ══════════════════════════════════
+     MEMBERS
+══════════════════════════════════ -->
+<div id="members" class="section">
+  <div class="slabel">Phân công 8 thành viên</div>
+  <table class="member-table">
+    <thead>
+      <tr>
+        <th>Thành viên</th>
+        <th>Vai trò</th>
+        <th>Đầu mục chính</th>
+        <th>Task cụ thể</th>
+        <th>Deadline nội bộ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>TV1 — Nhóm trưởng</td>
+        <td><span class="role-badge" style="color:var(--c3);border-color:rgba(192,80,16,0.3);background:rgba(192,80,16,0.07)">Lead</span></td>
+        <td>Điều phối + KHDM</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.1 Thu thập data cháy rừng (cùng TV2)</li>
+            <li>1.5 Khảo sát khách hàng (cùng TV6)</li>
+            <li>2.4 Kiến trúc nền tảng FPT (cùng TV8)</li>
+            <li>3.1 Business Model Canvas (cùng TV7)</li>
+            <li>3.7 Review tổng thể & nộp bài</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 5</td>
+      </tr>
+      <tr>
+        <td>TV2</td>
+        <td><span class="role-badge" style="color:var(--c1);border-color:rgba(26,106,170,0.3);background:rgba(26,106,170,0.07)">Dữ liệu</span></td>
+        <td>Tìm hiểu + NC phát triển</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.1 Thu thập data cháy rừng (cùng TV1)</li>
+            <li>2.1 Quy trình cảnh báo cháy (cùng TV3)</li>
+            <li>3.2 SWOT & chiến lược (cùng TV6)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 4</td>
+      </tr>
+      <tr>
+        <td>TV3</td>
+        <td><span class="role-badge" style="color:var(--c1);border-color:rgba(26,106,170,0.3);background:rgba(26,106,170,0.07)">Thị trường</span></td>
+        <td>Tìm hiểu + NC + KPI</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.2 Phân tích thị trường UAV</li>
+            <li>2.1 Quy trình cảnh báo cháy (cùng TV2)</li>
+            <li>2.5 Phân tích carbon (cùng TV5)</li>
+            <li>3.5 KPI & đánh giá (cùng TV8)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 4</td>
+      </tr>
+      <tr>
+        <td>TV4</td>
+        <td><span class="role-badge" style="color:var(--c2);border-color:rgba(30,128,64,0.3);background:rgba(30,128,64,0.07)">Pháp lý</span></td>
+        <td>Pháp lý + Tài chính</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.3 Khung pháp lý UAV</li>
+            <li>2.2 Quy trình bản đồ sinh thái (cùng TV5)</li>
+            <li>3.3 Kế hoạch tài chính 3 năm (cùng TV8)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 5</td>
+      </tr>
+      <tr>
+        <td>TV5</td>
+        <td><span class="role-badge" style="color:var(--c2);border-color:rgba(30,128,64,0.3);background:rgba(30,128,64,0.07)">Kỹ thuật</span></td>
+        <td>Nguồn quỹ + Kỹ thuật</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.4 Nguồn quỹ lâm nghiệp</li>
+            <li>2.2 Bản đồ sinh thái (cùng TV4)</li>
+            <li>2.5 Carbon (cùng TV3)</li>
+            <li>3.4 Go-to-Market (cùng TV7)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 4</td>
+      </tr>
+      <tr>
+        <td>TV6</td>
+        <td><span class="role-badge" style="color:var(--c2);border-color:rgba(30,128,64,0.3);background:rgba(30,128,64,0.07)">Rủi ro</span></td>
+        <td>Khảo sát + Rủi ro</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>1.5 Khảo sát khách hàng (cùng TV1)</li>
+            <li>2.3 Hạn chế & ma trận rủi ro (cùng TV7)</li>
+            <li>3.2 SWOT (cùng TV2)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 4</td>
+      </tr>
+      <tr>
+        <td>TV7</td>
+        <td><span class="role-badge" style="color:var(--c3);border-color:rgba(192,80,16,0.3);background:rgba(192,80,16,0.07)">Chiến lược</span></td>
+        <td>Rủi ro + BMC + GTM</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>2.3 Ma trận rủi ro (cùng TV6)</li>
+            <li>3.1 Business Model Canvas (cùng TV1)</li>
+            <li>3.4 Go-to-Market (cùng TV5)</li>
+            <li>3.6 Slide thuyết trình (lead)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 5</td>
+      </tr>
+      <tr>
+        <td>TV8</td>
+        <td><span class="role-badge" style="color:var(--c3);border-color:rgba(192,80,16,0.3);background:rgba(192,80,16,0.07)">Tài chính</span></td>
+        <td>Kiến trúc + Tài chính + KPI</td>
+        <td>
+          <ul class="deliverable-list">
+            <li>2.4 Kiến trúc nền tảng (cùng TV1)</li>
+            <li>3.3 Tài chính 3 năm (cùng TV4)</li>
+            <li>3.5 KPI (cùng TV3)</li>
+            <li>3.6 Báo cáo văn bản (lead)</li>
+          </ul>
+        </td>
+        <td style="font-family:var(--mono);font-size:11px">Cuối tuần 5</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Meeting schedule -->
+  <div class="slabel">Lịch họp nhóm đề xuất</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:28px;">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:3px solid var(--c1)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c1);text-transform:uppercase;margin-bottom:6px">Kick-off · Tuần 1</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Họp khởi động</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">Phân công rõ task, thống nhất format báo cáo, lập nhóm chat, đặt deadline nội bộ từng tuần.</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:3px solid var(--c2)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c2);text-transform:uppercase;margin-bottom:6px">Check-in · Tuần 3</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Review giữa kỳ</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">Nhóm trưởng review output tuần 1–2. Điều chỉnh phân công nếu cần. Thống nhất hướng chính cho phần kinh doanh.</div>
+    </div>
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:3px solid var(--c3)">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c3);text-transform:uppercase;margin-bottom:6px">Final review · Tuần 5</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">Họp hoàn thiện</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">Review toàn bộ báo cáo + slide. Chỉnh sửa nội dung. Rehearsal thuyết trình nội bộ trước khi nộp.</div>
+    </div>
+  </div>
+  <div class="foot"><span>FPT MiniMBA 2026</span><span>Phân công 8 thành viên · 6 tuần</span></div>
+</div>
+
+<!-- ══════════════════════════════════
+     DELIVERABLES
+══════════════════════════════════ -->
+<div id="deliverables" class="section">
+  <div class="slabel">Đầu ra cần có & checklist theo tuần</div>
+  <div class="checklist">
+    <div class="check-card">
+      <div class="cc-head" style="color:var(--c1)">● Tuần 1–2 · Tìm hiểu dữ liệu</div>
+      <div class="check-item"><div class="check-box"></div><span>File Excel tổng hợp dữ liệu cháy rừng 2010–2024 (vụ, ha, tháng, tỉnh)</span><span class="ci-week">T2</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Báo cáo thị trường UAV lâm nghiệp (quy mô, đối thủ, giá tham chiếu)</span><span class="ci-week">T2</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Bảng tổng hợp khung pháp lý UAV VN (NĐ36, NĐ04, TT01, Luật LN)</span><span class="ci-week">T1</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Bảng nguồn quỹ lâm nghiệp (PFES, REDD+, GCF, VEPF)</span><span class="ci-week">T1</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Kết quả khảo sát ≥3 khách hàng tiềm năng (BQL rừng, DN lâm nghiệp)</span><span class="ci-week">T2</span></div>
+    </div>
+    <div class="check-card">
+      <div class="cc-head" style="color:var(--c2)">● Tuần 2–4 · Nghiên cứu phát triển</div>
+      <div class="check-item"><div class="check-box"></div><span>Sơ đồ quy trình cảnh báo cháy 6 bước + timestamp chi tiết</span><span class="ci-week">T2</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Sơ đồ quy trình bản đồ sinh thái 7 bước + stack công nghệ</span><span class="ci-week">T3</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Ma trận rủi ro 5 mảng × 4 loại hạn chế + hướng xử lý</span><span class="ci-week">T3</span></div>
+      <div class="check-item"><div class="check-box"></div><span>System diagram kiến trúc FPT AgroForest UAV (3 lớp)</span><span class="ci-week">T4</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Báo cáo carbon: AGB/BGB/ΔC + quy trình REDD+/VCS 5 bước</span><span class="ci-week">T3</span></div>
+    </div>
+    <div class="check-card">
+      <div class="cc-head" style="color:var(--c3)">● Tuần 3–5 · Kế hoạch kinh doanh</div>
+      <div class="check-item"><div class="check-box"></div><span>Business Model Canvas đầy đủ 9 ô (BMC)</span><span class="ci-week">T3</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Ma trận SWOT + 4 chiến lược SO/ST/WO/WT</span><span class="ci-week">T3</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Kế hoạch tài chính 3 năm (P&L, cashflow, break-even, NPV)</span><span class="ci-week">T5</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Go-to-Market roadmap (pilot → scale năm 2–3, partnership)</span><span class="ci-week">T4</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Dashboard KPI cho 5 mảng dịch vụ</span><span class="ci-week">T4</span></div>
+    </div>
+    <div class="check-card">
+      <div class="cc-head" style="color:var(--c4)">● Tuần 5–6 · Hoàn thiện & nộp</div>
+      <div class="check-item"><div class="check-box"></div><span>Báo cáo đề tài hoàn chỉnh theo format MiniMBA FPT (≥30 trang)</span><span class="ci-week">T5</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Slide thuyết trình 15–20 trang (executive summary style)</span><span class="ci-week">T5</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Rehearsal nội bộ + chỉnh sửa lần cuối</span><span class="ci-week">T6</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Kiểm tra tính nhất quán số liệu toàn bài</span><span class="ci-week">T6</span></div>
+      <div class="check-item"><div class="check-box"></div><span>Nộp bài đúng hạn qua kênh FCU quy định</span><span class="ci-week">T6</span></div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="slabel">Lưu ý quan trọng cho nhóm</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;">
+    <div style="background:rgba(192,80,16,0.05);border:1px solid rgba(192,80,16,0.2);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--c3);margin-bottom:8px">⚠ Rủi ro thường gặp</div>
+      <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Trùng đề tài với nhóm khác — đăng ký FCU càng sớm càng tốt (ưu tiên nhóm đăng ký trước)</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Số liệu tài chính không nhất quán giữa phần kỹ thuật và phần kinh doanh</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Phần carbon overstate khả năng UAV — cần định vị đúng ngay từ đầu</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Slide quá nhiều chữ, thiếu số liệu minh họa cụ thể</li>
+      </ul>
+    </div>
+    <div style="background:rgba(30,128,64,0.05);border:1px solid rgba(30,128,64,0.2);border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--c2);margin-bottom:8px">✓ Điểm mạnh cần nhấn trong bài</div>
+      <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Mô hình DaaS — không bán drone, bán dữ liệu → biên lợi nhuận cao</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Hệ sinh thái FPT (AI + Telecom + Cloud) = lợi thế độc quyền không ai copy được</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>PFES 3.000–4.000 tỷ/năm → khách hàng có ngân sách rõ ràng để trả phí</li>
+        <li style="padding-left:14px;position:relative"><span style="position:absolute;left:0">→</span>Carbon credit thị trường 2026 là cơ hội dài hạn thực sự</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>FPT MiniMBA 2026</span><span>Checklist đầu ra · 20 deliverables</span></div>
+</div>
+
+<!-- ══════════════════════════════════
+     3 ĐẦU RA BẮT BUỘC
+══════════════════════════════════ -->
+<div id="outputs3" class="section">
+
+  <!-- Hero -->
+  <div style="background:linear-gradient(135deg,rgba(112,64,192,0.06),rgba(192,80,16,0.06));border:1px solid rgba(112,64,192,0.15);border-radius:12px;padding:20px 24px;margin-bottom:24px;">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--c4);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:6px">Output bắt buộc nộp — MiniMBA FPT 2026</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">3 Đầu ra chính của dự án</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.7">Dự án UAV Lâm nghiệp phải nộp đúng 3 sản phẩm: <strong style="color:var(--text)">Slide thuyết trình</strong> (bảo vệ trước hội đồng) + <strong style="color:var(--text)">Video giới thiệu</strong> (demo dự án) + <strong style="color:var(--text)">Nhật ký AI</strong> (ghi lại toàn bộ quá trình dùng AI). Ba đầu ra này được thực hiện song song từ tuần 4.</div>
+  </div>
+
+  <!-- 3 output cards summary -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px;">
+    <div style="background:var(--white);border:2px solid var(--c4);border-radius:12px;padding:18px 20px;">
+      <div style="font-size:28px;margin-bottom:8px">📊</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Output 01</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Slide thuyết trình</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">15–20 slide · PowerPoint/Canva · Thuyết trình 10–15 phút trước hội đồng</div>
+      <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--c4)">Deadline: cuối tuần 5</div>
+    </div>
+    <div style="background:var(--white);border:2px solid var(--c3);border-radius:12px;padding:18px 20px;">
+      <div style="font-size:28px;margin-bottom:8px">🎬</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Output 02</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Video giới thiệu</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">3–5 phút · Giới thiệu dự án UAV · Upload YouTube/Drive nộp kèm</div>
+      <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--c3)">Deadline: cuối tuần 5</div>
+    </div>
+    <div style="background:var(--white);border:2px solid var(--c2);border-radius:12px;padding:18px 20px;">
+      <div style="font-size:28px;margin-bottom:8px">🤖</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Output 03</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px">Nhật ký AI</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">Ghi lại toàn bộ quá trình dùng AI (Claude, ChatGPT...) từ tuần 1 đến tuần 6</div>
+      <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--c2)">Deadline: cuối tuần 6</div>
+    </div>
+  </div>
+
+  <!-- ── OUTPUT 1: SLIDE ── -->
+  <div class="slabel">Output 01 — Slide thuyết trình chi tiết</div>
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+
+    <div style="background:rgba(112,64,192,0.05);padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:13px;font-weight:700;">Cấu trúc 18 slide — thứ tự trình bày</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Format: 16:9 · Font: Be Vietnam Pro hoặc Helvetica · Màu chủ đạo: xanh FPT #0066CC + cam #FF6600</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(112,64,192,0.08);color:var(--c4);border:1px solid rgba(112,64,192,0.2)">PowerPoint</span>
+        <span style="font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(112,64,192,0.08);color:var(--c4);border:1px solid rgba(112,64,192,0.2)">Canva</span>
+        <span style="font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(112,64,192,0.08);color:var(--c4);border:1px solid rgba(112,64,192,0.2)">Google Slides</span>
+      </div>
+    </div>
+
+    <!-- Slide list -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+      <!-- Left column -->
+      <div style="border-right:1px solid var(--border);">
+        ${[
+          ['01','Cover','Tên dự án + tên nhóm + logo FPT','Ảnh drone bay trên rừng xanh'],
+          ['02','Mục lục','5 phần chính của bài','Sơ đồ flow dẫn dắt người xem'],
+          ['03','Bối cảnh & bài toán','14,7M ha rừng VN — 1.700+ vụ cháy/năm — giám sát thủ công','Big number + hình ảnh cháy rừng'],
+          ['04','Cơ hội thị trường','Quy mô thị trường UAV lâm nghiệp + nguồn quỹ PFES 3.000–4.000 tỷ','Biểu đồ tăng trưởng'],
+          ['05','Phân tích PEST & 5 Forces','Cơ hội & thách thức bên ngoài','Bảng 2 cột gọn'],
+          ['06','Giải pháp đề xuất','FPT AgroForest UAV — nền tảng DaaS 5 mảng dịch vụ','Infographic 5 mảng'],
+          ['07','Mảng 1: Giám sát & cháy rừng','Quy trình 6 bước · thời gian 15 phút · UAV vs. thủ công','Timeline so sánh'],
+          ['08','Mảng 2: Bản đồ sinh thái','LiDAR + photogrammetry · 5 sản phẩm dữ liệu · data flywheel','Hình 3D rừng + icons'],
+          ['09','Mảng 3–4: Sâu bệnh & Trồng rừng','Phát hiện NDVI + gieo hạt drone · số liệu so sánh chi phí','2 mini-card song song'],
+        ].map(([n,t,c,v])=>`
+        <div style="display:grid;grid-template-columns:36px 1fr;gap:0;border-bottom:1px solid var(--border);">
+          <div style="background:rgba(112,64,192,0.06);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--c4);padding:12px 4px;">${n}</div>
+          <div style="padding:10px 14px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:3px;">${t}</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:3px;">${c}</div>
+            <div style="font-size:10px;font-family:var(--mono);color:var(--faint);">Visual gợi ý: ${v}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <!-- Right column -->
+      <div>
+        ${[
+          ['10','Carbon & tín chỉ carbon','AGB/BGB/ΔC · quy trình REDD+ · thị trường 2026','Flowchart 5 bước'],
+          ['11','Business Model Canvas','9 ô BMC đầy đủ · DaaS · 3 luồng doanh thu','Canvas template đầy màu'],
+          ['12','Lợi thế cạnh tranh FPT','AI + Telecom + Cloud = moat không ai copy được trong 2–3 năm','Venn diagram 3 vòng'],
+          ['13','Kế hoạch tài chính','Doanh thu 3 năm · Break-even tháng 18 · NPV dương','Biểu đồ cột 3 kịch bản'],
+          ['14','Go-to-Market roadmap','Pilot 6 tháng (Nghệ An) → Scale năm 2 → Quốc tế năm 3','Timeline ngang'],
+          ['15','KPI & đánh giá','Ha giám sát · vụ cháy phát hiện sớm · NPS · doanh thu','Dashboard mini'],
+          ['16','Rủi ro & giải pháp','Top 5 rủi ro + hướng xử lý · ma trận 2×2','Risk matrix chart'],
+          ['17','Lộ trình & nguồn lực','8 thành viên · 3 giai đoạn · partnership cần thiết','Gantt đơn giản'],
+          ['18','Tổng kết & kêu gọi hành động','Tóm tắt 3 điểm mạnh · "FPT có đủ tất cả để làm ngay hôm nay"','Closing slide ấn tượng'],
+        ].map(([n,t,c,v])=>`
+        <div style="display:grid;grid-template-columns:36px 1fr;gap:0;border-bottom:1px solid var(--border);">
+          <div style="background:rgba(192,80,16,0.06);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--c3);padding:12px 4px;">${n}</div>
+          <div style="padding:10px 14px;">
+            <div style="font-size:12px;font-weight:600;margin-bottom:3px;">${t}</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:3px;">${c}</div>
+            <div style="font-size:10px;font-family:var(--mono);color:var(--faint);">Visual gợi ý: ${v}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Slide tips -->
+    <div style="padding:14px 20px;background:rgba(112,64,192,0.04);border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;"><strong style="color:var(--text)">Nguyên tắc thiết kế:</strong> Mỗi slide chỉ 1 thông điệp chính. Tối đa 30 chữ/bullet. Ưu tiên số liệu và biểu đồ hơn văn bản dài.</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;"><strong style="color:var(--text)">Thuyết trình 15 phút:</strong> Cover+mục lục 1', Bối cảnh 2', Giải pháp 5', Kinh doanh 4', Tổng kết 2', Q&A 5' riêng.</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;"><strong style="color:var(--text)">Tool gợi ý:</strong> Canva (dễ đẹp, chia sẻ nhóm) hoặc PowerPoint + icon từ flaticon.com. Xuất PDF + PPTX để nộp.</div>
+    </div>
+  </div>
+
+  <!-- ── OUTPUT 2: VIDEO ── -->
+  <div class="slabel">Output 02 — Video giới thiệu dự án</div>
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+
+    <div style="background:rgba(192,80,16,0.05);padding:14px 20px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:700;">Kịch bản video 4 phút — cấu trúc theo AIDA</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Attention → Interest → Desire → Action · Quay bằng điện thoại cũng được nếu dựng tốt</div>
+    </div>
+
+    <div style="padding:16px 20px;">
+      <!-- Script sections -->
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+
+        <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--c3);">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c3);font-weight:500;">0:00–0:30<br>MỞ ĐẦU</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Hook — Đặt vấn đề gây chú ý</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6;">Mở bằng footage cháy rừng (YouTube Creative Commons) hoặc ảnh drone trên rừng. Giọng đọc: <em>"Mỗi năm Việt Nam mất hơn 23.000 ha rừng vì cháy. Phần lớn không được phát hiện kịp thời. FPT có thể thay đổi điều này."</em></div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;">30 giây</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--c1);">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c1);font-weight:500;">0:30–1:30<br>BÀI TOÁN</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Thực trạng & cơ hội</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6;">Infographic động hoặc slide quay màn hình: số liệu cháy rừng, thời gian phát hiện 6–8 giờ, 14,7M ha cần giám sát. Kết: <em>"Thị trường PFES 4.000 tỷ/năm đang chờ một giải pháp công nghệ."</em></div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;">60 giây</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--c2);">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c2);font-weight:500;">1:30–3:00<br>GIẢI PHÁP</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px;">FPT AgroForest UAV — 5 mảng dịch vụ</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6;">Quay màn hình demo các file đã làm (dashboard cháy rừng, bản đồ sinh thái, carbon report). Xen kẽ clip drone thực tế (YouTube Creative Commons về drone lâm nghiệp). Giải thích mô hình DaaS, lợi thế FPT AI + Telecom + Cloud.</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;">90 giây</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--c4);">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c4);font-weight:500;">3:00–3:45<br>SỐ LIỆU</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Kế hoạch tài chính & tác động</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6;">Hiển thị nhanh: doanh thu dự kiến năm 3, break-even tháng 18, diện tích rừng được bảo vệ, số ha carbon được giám sát. Đơn giản, số lớn, màu sắc rõ ràng.</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;">45 giây</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:80px 1fr auto;gap:12px;align-items:start;padding:12px;border:1px solid var(--border);border-radius:8px;border-left:3px solid var(--c3);">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c3);font-weight:500;">3:45–4:00<br>KẾT THÚC</div>
+          <div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Call to action</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6;"><em>"FPT AgroForest UAV — bảo vệ rừng Việt Nam bằng công nghệ. Chúng tôi có đủ AI, đủ hạ tầng, và đủ quyết tâm để bắt đầu ngay hôm nay."</em> Fade out với logo FPT + tên nhóm.</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap;">15 giây</div>
+        </div>
+
+      </div>
+
+      <!-- Production tips -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">🎬 Tool quay & dựng (miễn phí)</div>
+          <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">CapCut PC</strong> — dựng video, thêm text, nhạc nền, hiệu ứng chuyển cảnh. Rất dễ dùng.</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">OBS Studio</strong> — quay màn hình dashboard, demo file HTML đã làm.</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">Canva Video</strong> — tạo infographic động, slide chuyển động đẹp.</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">ElevenLabs / Google TTS</strong> — tạo giọng đọc AI nếu không muốn thu tiếng thật.</li>
+          </ul>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:8px;">🎵 Nguồn footage & nhạc miễn phí</div>
+          <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">YouTube Creative Commons</strong> — search "drone forest Vietnam" lọc CC license.</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">Pexels.com / Pixabay</strong> — video drone, rừng, thiên nhiên miễn phí thương mại.</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">YouTube Audio Library</strong> — nhạc nền không bản quyền, search "corporate inspiring".</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span><strong style="color:var(--text);">Xuất:</strong> 1080p MP4, upload YouTube (unlisted) + Drive để nộp link.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OUTPUT 3: AI DIARY ── -->
+  <div class="slabel">Output 03 — Nhật ký AI (AI Usage Log)</div>
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;">
+
+    <div style="background:rgba(30,128,64,0.05);padding:14px 20px;border-bottom:1px solid var(--border);">
+      <div style="font-size:13px;font-weight:700;">Mục đích & cách ghi nhật ký AI</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Nhật ký AI ghi lại mọi lần nhóm dùng AI (Claude, ChatGPT, Gemini...) trong suốt dự án — chứng minh quá trình tư duy, không phải chỉ copy-paste kết quả.</div>
+    </div>
+
+    <div style="padding:16px 20px;">
+
+      <!-- Format mẫu -->
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--c2);">📋 Format mỗi entry nhật ký</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.8;margin-bottom:16px;color:var(--muted);">
+        <div><strong style="color:var(--text);">Ngày:</strong> [DD/MM/YYYY] — Tuần [N] dự án</div>
+        <div><strong style="color:var(--text);">Thành viên dùng:</strong> [TV1/TV2/...]</div>
+        <div><strong style="color:var(--text);">Công cụ AI:</strong> [Claude / ChatGPT / Gemini / Copilot / khác]</div>
+        <div><strong style="color:var(--text);">Mục đích:</strong> [Dùng AI để làm gì — phân tích dữ liệu / viết nội dung / thiết kế / brainstorm...]</div>
+        <div><strong style="color:var(--text);">Prompt đã dùng:</strong> [Copy nguyên văn câu hỏi/yêu cầu đã nhập vào AI]</div>
+        <div><strong style="color:var(--text);">Kết quả AI trả về:</strong> [Tóm tắt kết quả — không cần copy toàn bộ]</div>
+        <div><strong style="color:var(--text);">Nhóm đã dùng như thế nào:</strong> [Dùng nguyên / chỉnh sửa / chỉ lấy ý tưởng / bác bỏ vì...]</div>
+        <div><strong style="color:var(--text);">Nhận xét:</strong> [AI có hữu ích không? Hạn chế gì? Cần kiểm chứng phần nào?]</div>
+      </div>
+
+      <!-- Ví dụ thực tế -->
+      <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--c2);">📌 Ví dụ entry thực tế từ dự án này</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+
+        <div style="border:1px solid rgba(30,128,64,0.2);border-radius:8px;overflow:hidden;">
+          <div style="background:rgba(30,128,64,0.06);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:11px;font-weight:600;">Entry #1 — Tuần 1</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Claude Sonnet 4.6</div>
+          </div>
+          <div style="padding:10px 14px;font-size:11px;color:var(--muted);line-height:1.7;">
+            <div><strong style="color:var(--text);">Mục đích:</strong> Tổng hợp thống kê cháy rừng VN 2010–2024 để làm dashboard phân tích</div>
+            <div><strong style="color:var(--text);">Prompt:</strong> "phân tích lịch sử cháy rừng" → "Dùng dữ liệu tổng hợp từ kiến thức sẵn có để minh họa" → "Tất cả — dashboard tổng hợp"</div>
+            <div><strong style="color:var(--text);">Kết quả:</strong> AI tạo ra file HTML dashboard với 7 biểu đồ: xu hướng theo năm, theo tháng, heatmap, nguyên nhân, vùng địa lý, loại rừng, diện tích thiệt hại</div>
+            <div><strong style="color:var(--text);">Nhóm dùng như thế nào:</strong> Dùng trực tiếp dashboard, thêm ghi chú "dữ liệu minh họa" vì số liệu AI tổng hợp cần kiểm chứng với nguồn Cục Kiểm lâm</div>
+            <div><strong style="color:var(--text);">Nhận xét:</strong> AI hữu ích cho visualization nhanh; cần tự thu thập số liệu thực từ kiemlam.org.vn để thay thế trước khi nộp bài chính thức</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(30,128,64,0.2);border-radius:8px;overflow:hidden;">
+          <div style="background:rgba(30,128,64,0.06);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:11px;font-weight:600;">Entry #2 — Tuần 1</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Claude Sonnet 4.6</div>
+          </div>
+          <div style="padding:10px 14px;font-size:11px;color:var(--muted);line-height:1.7;">
+            <div><strong style="color:var(--text);">Mục đích:</strong> Tổng hợp khung pháp lý UAV tại VN</div>
+            <div><strong style="color:var(--text);">Prompt:</strong> "các luật liên quan đến UAV"</div>
+            <div><strong style="color:var(--text);">Kết quả:</strong> AI liệt kê 6 nhóm văn bản pháp lý (NĐ36, NĐ04/2022, TT01/2022, Luật Hàng không, Luật Lâm nghiệp, Luật Đo đạc Bản đồ, Luật An ninh mạng)</div>
+            <div><strong style="color:var(--text);">Nhóm dùng:</strong> Dùng làm khung, tra thêm trực tiếp trên Thư viện pháp luật (thuvienphapluat.vn) để xác nhận số hiệu văn bản</div>
+            <div><strong style="color:var(--text);">Nhận xét:</strong> AI có thể nhầm số nghị định hoặc ngày ban hành — bắt buộc phải kiểm chứng nguồn pháp lý trước khi đưa vào báo cáo</div>
+          </div>
+        </div>
+
+        <div style="border:1px solid rgba(30,128,64,0.2);border-radius:8px;overflow:hidden;">
+          <div style="background:rgba(30,128,64,0.06);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:11px;font-weight:600;">Entry #3 — Tuần 2</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);">Claude Sonnet 4.6</div>
+          </div>
+          <div style="padding:10px 14px;font-size:11px;color:var(--muted);line-height:1.7;">
+            <div><strong style="color:var(--text);">Mục đích:</strong> Thiết kế quy trình kỹ thuật UAV phát hiện cháy rừng</div>
+            <div><strong style="color:var(--text);">Prompt:</strong> "cách để UAV cảnh báo việc cháy"</div>
+            <div><strong style="color:var(--text);">Kết quả:</strong> AI tạo HTML chi tiết: quy trình 6 bước, so sánh 3 cảm biến, 4 mức cảnh báo, timeline UAV vs. thủ công, 8 hạn chế kỹ thuật + giải pháp</div>
+            <div><strong style="color:var(--text);">Nhóm dùng:</strong> Dùng làm nền nghiên cứu, bổ sung bằng paper "UAV for forest fire detection" từ Google Scholar để có citation học thuật</div>
+            <div><strong style="color:var(--text);">Nhận xét:</strong> AI tổng hợp tốt kiến thức kỹ thuật; cần thêm case study thực tế (Israel, Úc) có số liệu đã được kiểm chứng</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Gợi ý cách nộp -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:rgba(30,128,64,0.05);border:1px solid rgba(30,128,64,0.2);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--c2);margin-bottom:8px;">📁 Cách tổ chức nhật ký</div>
+          <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>1 file Google Docs chung cả nhóm, mỗi TV có section riêng</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Ghi ngay sau mỗi lần dùng AI — đừng để đến cuối mới ghi hồi tưởng</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Mục tiêu: ≥20 entry trong 6 tuần (trung bình 3–4 entry/tuần/nhóm)</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Nộp dưới dạng PDF kèm báo cáo chính</li>
+          </ul>
+        </div>
+        <div style="background:rgba(192,80,16,0.05);border:1px solid rgba(192,80,16,0.2);border-radius:8px;padding:12px 14px;">
+          <div style="font-size:12px;font-weight:600;color:var(--c3);margin-bottom:8px;">⚠ Lưu ý quan trọng</div>
+          <ul style="list-style:none;font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:5px;">
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Nhật ký phải thể hiện tư duy phản biện — AI nói gì, nhóm đồng ý hay không, vì sao</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Không được copy toàn bộ output AI vào báo cáo mà không chỉnh sửa</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Số liệu AI đưa ra phải được kiểm chứng với nguồn chính thức trước khi dùng</li>
+            <li style="padding-left:14px;position:relative;"><span style="position:absolute;left:0;">→</span>Ghi rõ phần nào trong báo cáo được hỗ trợ bởi AI, phần nào nhóm tự làm</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timeline 3 outputs -->
+  <div class="slabel">Timeline làm 3 đầu ra song song — tuần 4–6</div>
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:120px repeat(3,1fr);border-bottom:1px solid var(--border);background:var(--bg);">
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;">Đầu ra</div>
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;border-left:1px solid var(--border);">Tuần 4</div>
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;border-left:1px solid var(--border);">Tuần 5</div>
+      <div style="padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;border-left:1px solid var(--border);">Tuần 6</div>
+    </div>
+    <div style="display:grid;grid-template-columns:120px repeat(3,1fr);border-bottom:1px solid var(--border);">
+      <div style="padding:10px 12px;font-size:12px;font-weight:600;">📊 Slide</div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(112,64,192,0.15);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c4);">Phác thảo outline + template</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:var(--c4);border-radius:4px;padding:4px 8px;font-size:11px;color:white;">Hoàn thiện nội dung 18 slide</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(112,64,192,0.1);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c4);">Review + rehearsal</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:120px repeat(3,1fr);border-bottom:1px solid var(--border);">
+      <div style="padding:10px 12px;font-size:12px;font-weight:600;">🎬 Video</div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(192,80,16,0.1);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c3);">Viết kịch bản + thu footage</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:var(--c3);border-radius:4px;padding:4px 8px;font-size:11px;color:white;">Dựng video + voiceover</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(192,80,16,0.1);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c3);">Upload + nộp link</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:120px repeat(3,1fr);">
+      <div style="padding:10px 12px;font-size:12px;font-weight:600;">🤖 Nhật ký AI</div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(30,128,64,0.1);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c2);">Ghi liên tục từ tuần 1 → tổng hợp</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:rgba(30,128,64,0.15);border-radius:4px;padding:4px 8px;font-size:11px;color:var(--c2);">Review đủ ≥20 entry + format</div></div>
+      <div style="padding:10px 12px;border-left:1px solid var(--border);"><div style="background:var(--c2);border-radius:4px;padding:4px 8px;font-size:11px;color:white;">Nộp PDF kèm báo cáo</div></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>FPT MiniMBA 2026 · AgroForest UAV</span><span>3 đầu ra bắt buộc · Slide + Video + Nhật ký AI</span></div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function toggleWBS(header) {
+  const tasks = header.nextElementSibling;
+  const isOpen = tasks.classList.contains('open');
+  tasks.classList.toggle('open', !isOpen);
+  header.classList.toggle('open', !isOpen);
+}
+// Open first group by default
+document.querySelectorAll('.wbs-header')[0].click();
+</script>
+</body>
+</html>
